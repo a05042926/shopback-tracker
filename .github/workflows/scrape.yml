@@ -39,3 +39,8 @@ jobs:
           git add data/cashback_history.json
           git diff --staged --quiet || git commit -m "📊 auto: update cashback rates $(date +'%Y-%m-%d %H:%M') CST"
           git push
+      - name: Run flight scraper
+        env: 
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+        run: python scraper/flight_scraper.py
+          

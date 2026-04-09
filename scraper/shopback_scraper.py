@@ -29,48 +29,81 @@ DATA_FILE = Path(__file__).parent.parent / "data" / "cashback_history.json"
 def scrape_cashback_rate(page, platform: str, url: str) -> dict | None:
     """爬取單一平台的回饋率"""
     try:
-        print(f"  → 爬取 {platform}...")
+        print(f"  -> 爬取 {platform}...")
         page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-        # 等待回饋率元素出現（ShopBack 用 JS 渲染）
-        page.wait_for_timeout(3000)
+        # ShopBack 用 MUI + JS 渲染，等待較長時間確保展開
+        page.wait_for_timeout(5000)
 
-        # 嘗試多種 selector 抓到回饋率數字
         rate_text = None
-        selectors = [
-            # 實際 ShopBack 頁面的 selector（2026/04 確認）
-            "p.font_bold[class*='text_sbds-global-font-color-primary']",
-            "[class*='font_bold'][class*='fs_sbds-global-font-size']",
-            # 備用
-            "[data-qa='cashback-rate']",
-            ".cashback-rate",
-            "[class*='cashback'][class*='rate']",
-            "[class*='CashbackRate']",
-            "h1[class*='rate']",
-        ]
 
-        for sel in selectors:
-            try:
-                el = page.locator(sel).first
-                if el.count() > 0:
-                    rate_text = el.inner_text(timeout=3000)
+        # 策略 1：找所有 font_bold 的 <p>，取出包含 % 的文字
+        try:
+            els = page.locator("p.font_bold").all()
+            for el in els:
+                txt = el.inner_text(timeout=2000).strip()
+                if "%" in txt and re.search(r'\d', txt):
+                    rate_text = txt
+                    print(f"    策略1 找到: {txt}")
                     break
-            except Exception:
-                continue
+        except Exception:
+            pass
 
-        # 若 selector 都沒抓到，嘗試從頁面文字用 regex 找
+        # 策略 2：找 class 含 font_bold 的 <p>
+        if not rate_text:
+            try:
+                els = page.locator("p[class*='font_bold']").all()
+                for el in els:
+                    txt = el.inner_text(timeout=2000).strip()
+                    if re.search(r'\d+.*%', txt):
+                        rate_text = txt
+                        print(f"    策略2 找到: {txt}")
+                        break
+            except Exception:
+                pass
+
+        # 策略 3：展開 Accordion 後再找
+        if not rate_text:
+            try:
+                accordions = page.locator(".MuiAccordion-root").all()
+                for acc in accordions[:3]:
+                    try:
+                        acc.click(timeout=2000)
+                        page.wait_for_timeout(800)
+                    except Exception:
+                        pass
+                els = page.locator("p.font_bold").all()
+                for el in els:
+                    txt = el.inner_text(timeout=2000).strip()
+                    if "%" in txt and re.search(r'\d', txt):
+                        rate_text = txt
+                        print(f"    策略3 找到: {txt}")
+                        break
+            except Exception:
+                pass
+
+        # 策略 4：從整個頁面 HTML 用 regex 找
         if not rate_text:
             content = page.content()
             match = re.search(
-                r'(\d+(?:\.\d+)?)\s*%\s*(?:Cashback|回饋|cashback)',
-                content,
-                re.IGNORECASE
+                r'font_bold[^>]*>([^<]*\d+(?:\.\d+)?%[^<]*)<',
+                content
             )
             if match:
-                rate_text = match.group(0)
+                rate_text = match.group(1)
+                print(f"    策略4 找到: {rate_text}")
+            else:
+                match = re.search(
+                    r'(\d+(?:\.\d+)?)\s*%\s*(?:Cashback|回饋|cashback|現金回饋)',
+                    content,
+                    re.IGNORECASE
+                )
+                if match:
+                    rate_text = match.group(0)
+                    print(f"    策略4b 找到: {rate_text}")
 
         if not rate_text:
-            print(f"    ⚠️  找不到 {platform} 的回饋率")
+            print(f"    WARNING: 找不到 {platform} 的回饋率")
             return None
 
         # 抽出數字
@@ -92,7 +125,7 @@ def scrape_cashback_rate(page, platform: str, url: str) -> dict | None:
         }
 
     except Exception as e:
-        print(f"    ❌ {platform} 發生錯誤：{e}")
+        print(f"    ERROR: {platform} 發生錯誤：{e}")
         return None
 
 
@@ -102,7 +135,7 @@ def run_scraper():
     today = datetime.now().strftime("%Y-%m-%d")
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    print(f"\n🔍 開始爬取 ShopBack 回饋率 [{now}]\n")
+    print(f"\n開始爬取 ShopBack 回饋率 [{now}]\n")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -125,8 +158,8 @@ def run_scraper():
                 result["date"] = today
                 result["scraped_at"] = now
                 results.append(result)
-                print(f"    ✅ {platform}: {result['rate']}%"
-                      + (" 🔥 加碼中" if result["is_upsized"] else ""))
+                print(f"    OK {platform}: {result['rate']}%"
+                      + (" (加碼中)" if result["is_upsized"] else ""))
 
         browser.close()
 
@@ -148,25 +181,18 @@ def save_history(history: list):
 
 
 def merge_results(history: list, new_results: list) -> list:
-    """將新結果合併進歷史，同一天同平台只保留最新一筆"""
     today = datetime.now().strftime("%Y-%m-%d")
-
-    # 移除今天舊記錄
     history = [r for r in history if r.get("date") != today]
     history.extend(new_results)
-
-    # 依日期排序
     history.sort(key=lambda x: x.get("scraped_at", ""))
     return history
 
 
-# ── 報告 ──────────────────────────────────────────────
 def print_summary(history: list):
     platforms = list(TARGETS.keys())
-    print("\n" + "─" * 50)
-    print("📊 各平台回饋率摘要")
-    print("─" * 50)
-
+    print("\n" + "-" * 50)
+    print("各平台回饋率摘要")
+    print("-" * 50)
     for platform in platforms:
         records = [r for r in history if r["platform"] == platform]
         if not records:
@@ -174,18 +200,11 @@ def print_summary(history: list):
         latest = records[-1]
         rates = [r["rate"] for r in records]
         max_rate = max(rates)
-        min_rate = min(rates)
         is_max = latest["rate"] == max_rate and len(records) > 1
-
-        flag = " 🏆 歷史最高！" if is_max else ""
-        upsized = " 🔥" if latest.get("is_upsized") else ""
-        print(
-            f"  {platform:15s}  現在 {latest['rate']:5.1f}%{upsized}"
-            f"  (歷史最高 {max_rate:.1f}%  最低 {min_rate:.1f}%){flag}"
-        )
-    print("─" * 50)
-    print(f"  總記錄筆數：{len(history)}")
-    print("─" * 50 + "\n")
+        flag = " *** 歷史最高！" if is_max else ""
+        upsized = " (加碼)" if latest.get("is_upsized") else ""
+        print(f"  {platform:15s}  {latest['rate']:5.1f}%{upsized}  (歷史最高 {max_rate:.1f}%){flag}")
+    print("-" * 50 + "\n")
 
 
 # ── 主程式 ────────────────────────────────────────────
@@ -196,7 +215,7 @@ if __name__ == "__main__":
         history = load_history()
         history = merge_results(history, new_results)
         save_history(history)
-        print(f"\n💾 已儲存 {len(new_results)} 筆記錄 → {DATA_FILE}")
+        print(f"\n已儲存 {len(new_results)} 筆記錄 -> {DATA_FILE}")
         print_summary(history)
     else:
-        print("\n⚠️  本次沒有抓到任何資料，請檢查網路或 selector 是否需要更新")
+        print("\nWARNING: 本次沒有抓到任何資料，請檢查網路或 selector 是否需要更新")

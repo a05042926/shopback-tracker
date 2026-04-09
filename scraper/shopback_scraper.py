@@ -38,6 +38,10 @@ def scrape_cashback_rate(page, platform: str, url: str) -> dict | None:
         # 嘗試多種 selector 抓到回饋率數字
         rate_text = None
         selectors = [
+            # 實際 ShopBack 頁面的 selector（2026/04 確認）
+            "p.font_bold[class*='text_sbds-global-font-color-primary']",
+            "[class*='font_bold'][class*='fs_sbds-global-font-size']",
+            # 備用
             "[data-qa='cashback-rate']",
             ".cashback-rate",
             "[class*='cashback'][class*='rate']",

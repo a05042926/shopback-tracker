@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>回饋率追蹤儀表板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07);
+    --accent: #7c6fff;
+    --accent2: #ff6b6b;
+    --accent3: #4ecdc4;
+    --accent4: #ffd93d;
+    --text: #f0f0f8;
+    --muted: #6b6b80;
+    --success: #4ecdc4;
+    --warning: #ffd93d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── 背景紋路 ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(124,111,255,0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(78,205,196,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .last-updated { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; }
+  .last-updated strong { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+
+  /* ── Config bar ── */
+  .config-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .config-bar label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .config-bar input {
+    flex: 1; min-width: 260px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .config-bar input:focus { border-color: var(--accent); }
+  .btn-load {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .btn-load:hover { opacity: 0.85; }
+
+  /* ── Platform tabs ── */
+  .platform-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .ptab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'Sora', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .ptab:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+  .ptab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+
+  /* ── Stat cards ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .stat-card:hover { border-color: rgba(255,255,255,0.15); }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .stat-value { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; color: var(--accent-color, var(--accent)); line-height: 1; }
+  .stat-unit { font-size: 1rem; font-weight: 400; margin-left: 2px; }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .badge-upsized {
+    display: inline-block;
+    background: rgba(255,107,107,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .badge-high {
+    display: inline-block;
+    background: rgba(78,205,196,0.15);
+    color: var(--success);
+    border: 1px solid rgba(78,205,196,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  /* ── Chart ── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* ── History table ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+  .table-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-header h3 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; color: var(--muted); font-weight: 400; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .rate-cell { font-family: 'DM Mono', monospace; font-weight: 500; font-size: 14px; }
+  .upsized-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); margin-right: 6px; box-shadow: 0 0 6px var(--accent2); }
+
+  /* ── All platforms overview ── */
+  .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .platform-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: border-color .2s, transform .15s;
+    cursor: pointer;
+  }
+  .platform-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
+  .platform-card.selected { border-color: var(--accent); }
+  .platform-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .platform-meta { font-size: 11px; color: var(--muted); }
+  .platform-rate { font-family: 'DM Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.03em; }
+  .platform-rate .pct { font-size: 1.2rem; font-weight: 400; }
+  .trend-up { color: var(--success); font-size: 11px; }
+  .trend-down { color: var(--accent2); font-size: 11px; }
+
+  /* ── States ── */
+  .loading, .empty, .error {
+    text-align: center; padding: 4rem 2rem;
+    color: var(--muted); font-size: 14px;
+  }
+  .loading::before { content: '⏳ '; }
+  .empty::before { content: '📭 '; }
+  .error { color: var(--accent2); }
+  .error::before { content: '⚠️ '; }
+
+  .spinner {
+    display: inline-block; width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <div>
+        <h1>ShopBack <span>回饋率</span>追蹤</h1>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">自動追蹤旅遊平台現金回饋率變化</div>
+      </div>
+    </div>
+    <div class="last-updated" id="last-updated">
+      <strong>—</strong>最後更新
+    </div>
+  </header>
+
+  <!-- JSON 來源設定 -->
+  <div class="config-bar">
+    <label>資料來源 JSON：</label>
+    <input type="text" id="json-url"
+      placeholder="https://raw.githubusercontent.com/你的帳號/shopback-tracker/main/data/cashback_history.json"
+      value="">
+    <button class="btn-load" onclick="loadData()">載入資料</button>
+  </div>
+
+  <div id="main-content">
+    <div class="empty">請輸入你的 GitHub raw JSON 網址，點擊「載入資料」開始使用</div>
+  </div>
+
+</div>
+
+<script>
+const PLATFORM_COLORS = {
+  'Hotels.com':  '#7c6fff',
+  'Booking.com': '#4ecdc4',
+  'KKday':       '#ffd93d',
+  'Trip.com':    '#ff6b6b',
+  'Agoda':       '#a8e6cf',
+  'Klook':       '#ff9a9e',
+};
+
+let allData = [];
+let chartInstance = null;
+let selectedPlatform = null;
+
+// ── 嘗試從 localStorage 恢復 URL ──
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('sb_json_url');
+  if (saved) {
+    document.getElementById('json-url').value = saved;
+    loadData();
+  }
+});
+
+async function loadData() {
+  const url = document.getElementById('json-url').value.trim();
+  if (!url) return;
+  localStorage.setItem('sb_json_url', url);
+
+  const content = document.getElementById('main-content');
+  content.innerHTML = `<div class="loading"><span class="spinner"></span>載入中...</div>`;
+
+  try {
+    // 加 cache buster 確保拿到最新
+    const res = await fetch(url + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allData = await res.json();
+
+    if (!allData.length) {
+      content.innerHTML = `<div class="empty">JSON 是空的，爬蟲還沒跑過或尚無資料</div>`;
+      return;
+    }
+
+    const platforms = [...new Set(allData.map(r => r.platform))];
+    selectedPlatform = platforms[0];
+    render();
+  } catch (e) {
+    content.innerHTML = `<div class="error">無法載入資料：${e.message}<br><br>
+      請確認網址是 GitHub raw 格式，且 repo 是公開的</div>`;
+  }
+}
+
+function render() {
+  const platforms = [...new Set(allData.map(r => r.platform))];
+  const latestByPlatform = {};
+  platforms.forEach(p => {
+    const recs = allData.filter(r => r.platform === p).sort((a,b) => a.scraped_at > b.scraped_at ? 1 : -1);
+    latestByPlatform[p] = recs[recs.length - 1];
+  });
+
+  const lastRecord = allData.sort((a,b) => a.scraped_at > b.scraped_at ? 1 : -1).slice(-1)[0];
+  const updatedEl = document.getElementById('last-updated');
+  updatedEl.innerHTML = `<strong>${lastRecord.scraped_at?.slice(0,16) || lastRecord.date}</strong>最後更新`;
+
+  const platformRecords = allData.filter(r => r.platform === selectedPlatform)
+    .sort((a,b) => a.scraped_at > b.scraped_at ? 1 : -1);
+  const rates = platformRecords.map(r => r.rate);
+  const latest = platformRecords[platformRecords.length - 1];
+  const maxRate = Math.max(...rates);
+  const minRate = Math.min(...rates);
+  const avgRate = (rates.reduce((a,b) => a+b, 0) / rates.length).toFixed(1);
+  const isHigh = latest?.rate === maxRate && rates.length > 1;
+  const prevRate = platformRecords.length >= 2 ? platformRecords[platformRecords.length - 2].rate : null;
+
+  document.getElementById('main-content').innerHTML = `
+
+    <!-- 平台總覽卡片 -->
+    <div class="overview-grid" id="overview-grid"></div>
+
+    <!-- 選中平台 Tabs -->
+    <div class="platform-tabs" id="platform-tabs"></div>
+
+    <!-- 統計卡片 -->
+    <div class="stats-grid">
+      <div class="stat-card" style="--accent-color: ${PLATFORM_COLORS[selectedPlatform] || 'var(--accent)'}">
+        <div class="stat-label">目前回饋率</div>
+        <div class="stat-value">${latest?.rate ?? '—'}<span class="stat-unit">%</span>
+          ${latest?.is_upsized ? '<span class="badge-upsized">🔥 加碼</span>' : ''}
+          ${isHigh ? '<span class="badge-high">🏆 歷史高</span>' : ''}
+        </div>
+        <div class="stat-sub">${prevRate !== null ? (latest.rate > prevRate ? `▲ 比上次 +${(latest.rate - prevRate).toFixed(1)}%` : latest.rate < prevRate ? `▼ 比上次 ${(latest.rate - prevRate).toFixed(1)}%` : '與上次相同') : '首次記錄'}</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--success)">
+        <div class="stat-label">歷史最高</div>
+        <div class="stat-value">${maxRate}<span class="stat-unit">%</span></div>
+        <div class="stat-sub">${(() => { const r = platformRecords.find(x => x.rate === maxRate); return r ? r.date : '—'; })()}</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent2)">
+        <div class="stat-label">歷史最低</div>
+        <div class="stat-value">${minRate}<span class="stat-unit">%</span></div>
+        <div class="stat-sub">${(() => { const r = platformRecords.find(x => x.rate === minRate); return r ? r.date : '—'; })()}</div>
+      </div>
+      <div class="stat-card" style="--accent-color: var(--accent4)">
+        <div class="stat-label">平均回饋率</div>
+        <div class="stat-value">${avgRate}<span class="stat-unit">%</span></div>
+        <div class="stat-sub">共 ${rates.length} 筆記錄</div>
+      </div>
+    </div>
+
+    <!-- 趨勢圖 -->
+    <div class="chart-card">
+      <div class="chart-title">回饋率趨勢 — ${selectedPlatform}</div>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
+
+    <!-- 全平台對比圖 -->
+    <div class="chart-card">
+      <div class="chart-title">各平台最新回饋率對比</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="compare-chart"></canvas></div>
+    </div>
+
+    <!-- 歷史記錄表 -->
+    <div class="table-card">
+      <div class="table-header">
+        <h3>歷史記錄 — ${selectedPlatform}</h3>
+        <span style="font-size:11px;color:var(--muted)">${platformRecords.length} 筆</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>日期</th><th>時間</th><th>回饋率</th><th>狀態</th></tr></thead>
+          <tbody>
+            ${[...platformRecords].reverse().map(r => `
+              <tr>
+                <td style="font-family:'DM Mono',monospace;font-size:12px">${r.date}</td>
+                <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${r.scraped_at?.slice(11,16) || '—'}</td>
+                <td class="rate-cell" style="color:${r.rate === maxRate ? 'var(--success)' : r.rate === minRate ? 'var(--accent2)' : 'var(--text)'}">
+                  ${r.rate}%
+                </td>
+                <td>
+                  ${r.is_upsized ? '<span class="upsized-dot"></span><span style="font-size:11px;color:var(--accent2)">加碼特促</span>' : '<span style="font-size:11px;color:var(--muted)">一般</span>'}
+                  ${r.rate === maxRate && platformRecords.length > 1 ? ' <span class="badge-high">歷史高</span>' : ''}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // ── 平台總覽卡片 ──
+  const overviewGrid = document.getElementById('overview-grid');
+  overviewGrid.innerHTML = platforms.map(p => {
+    const rec = latestByPlatform[p];
+    const pRecs = allData.filter(r => r.platform === p).sort((a,b) => a.scraped_at > b.scraped_at ? 1 : -1);
+    const pMax = Math.max(...pRecs.map(r => r.rate));
+    const prev = pRecs.length >= 2 ? pRecs[pRecs.length-2].rate : null;
+    const trendHtml = prev !== null
+      ? (rec.rate > prev ? `<span class="trend-up">▲ +${(rec.rate-prev).toFixed(1)}%</span>`
+        : rec.rate < prev ? `<span class="trend-down">▼ ${(rec.rate-prev).toFixed(1)}%</span>`
+        : '<span style="color:var(--muted);font-size:11px">持平</span>')
+      : '';
+    return `<div class="platform-card ${p === selectedPlatform ? 'selected' : ''}" onclick="selectPlatform('${p}')">
+      <div>
+        <div class="platform-name">${p}</div>
+        <div class="platform-meta">${rec.date} ${trendHtml}</div>
+        ${rec.is_upsized ? '<div style="margin-top:4px"><span class="badge-upsized">🔥 加碼</span></div>' : ''}
+        ${rec.rate === pMax && pRecs.length > 1 ? '<div style="margin-top:4px"><span class="badge-high">🏆 歷史高</span></div>' : ''}
+      </div>
+      <div class="platform-rate" style="color:${PLATFORM_COLORS[p] || 'var(--accent)'}">
+        ${rec.rate}<span class="pct">%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Platform tabs ──
+  const tabs = document.getElementById('platform-tabs');
+  tabs.innerHTML = platforms.map(p =>
+    `<button class="ptab ${p === selectedPlatform ? 'active' : ''}" onclick="selectPlatform('${p}')">${p}</button>`
+  ).join('');
+
+  // ── 趨勢折線圖 ──
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  const color = PLATFORM_COLORS[selectedPlatform] || '#7c6fff';
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: platformRecords.map(r => r.date),
+      datasets: [{
+        label: selectedPlatform,
+        data: platformRecords.map(r => r.rate),
+        borderColor: color,
+        backgroundColor: color + '15',
+        pointBackgroundColor: platformRecords.map(r => r.is_upsized ? '#ff6b6b' : color),
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1c1c26', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#f0f0f8', bodyColor: '#9a9ab0',
+        callbacks: { label: ctx => ` ${ctx.parsed.y}% 回饋率` }
+      }},
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b6b80', font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b6b80', font: { size: 11 }, callback: v => v + '%' }
+        }
+      }
+    }
+  });
+
+  // ── 對比長條圖 ──
+  const ctx2 = document.getElementById('compare-chart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: platforms,
+      datasets: [{
+        data: platforms.map(p => latestByPlatform[p]?.rate ?? 0),
+        backgroundColor: platforms.map(p => (PLATFORM_COLORS[p] || '#7c6fff') + 'cc'),
+        borderColor: platforms.map(p => PLATFORM_COLORS[p] || '#7c6fff'),
+        borderWidth: 1,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1c1c26', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#f0f0f8', bodyColor: '#9a9ab0',
+        callbacks: { label: ctx => ` ${ctx.parsed.y}%` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b6b80', font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b6b80', font: { size: 11 }, callback: v => v + '%' }
+        }
+      }
+    }
+  });
+}
+
+function selectPlatform(p) {
+  selectedPlatform = p;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>

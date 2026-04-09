@@ -46,4 +46,10 @@ jobs:
         env: 
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python scraper/flight_scraper.py
-          
+      - name: Commit flight data
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/flight_history.json
+          git diff --staged --quiet || git commit -m "Update flight data $(date +'%Y-%m-%d %H:%M')"
+          git push

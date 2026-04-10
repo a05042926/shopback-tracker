@@ -9,7 +9,6 @@ SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 # 要追蹤的航線
 ROUTES = [
     {"from": "TPE", "to": "NRT", "label": "台北桃園 → 東京成田"},
-    {"from": "TSA", "to": "HND", "label": "台北松山 → 東京羽田"},
     {"from": "TPE", "to": "CTS", "label": "台北桃園 → 北海道札幌"},
     {"from": "TPE", "to": "SEA", "label": "台北桃園 → 西雅圖"},
 ]

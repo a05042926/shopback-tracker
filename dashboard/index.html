@@ -227,6 +227,103 @@
     margin-right: 8px; vertical-align: middle;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Section divider ── */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 2rem 0 1.5rem;
+  }
+  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider-title {
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── Flight config bar ── */
+  .flight-config-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .flight-config-bar label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .flight-config-bar input {
+    flex: 1; min-width: 260px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .flight-config-bar input:focus { border-color: #4ecdc4; }
+
+  /* ── Flight route cards ── */
+  .flight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .flight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, transform .15s;
+    cursor: pointer;
+  }
+  .flight-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--flight-color, #4ecdc4);
+  }
+  .flight-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-1px); }
+  .flight-card.selected { border-color: var(--flight-color, #4ecdc4); }
+  .flight-route { font-size: 15px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .flight-route-arrow { color: var(--muted); font-size: 13px; }
+  .flight-meta { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .flight-price-row { display: flex; align-items: flex-end; justify-content: space-between; }
+  .flight-price {
+    font-family: 'DM Mono', monospace;
+    font-size: 2rem; font-weight: 700;
+    color: var(--flight-color, #4ecdc4);
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .flight-price .currency { font-size: 1rem; font-weight: 400; margin-right: 2px; }
+  .flight-trend { font-size: 11px; text-align: right; }
+  .flight-trend-up { color: var(--accent2); }
+  .flight-trend-down { color: var(--success); }
+  .flight-trend-flat { color: var(--muted); }
+  .badge-low {
+    display: inline-block;
+    background: rgba(78,205,196,0.15);
+    color: var(--success);
+    border: 1px solid rgba(78,205,196,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .badge-high-price {
+    display: inline-block;
+    background: rgba(255,107,107,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
 </style>
 </head>
 <body>
@@ -236,8 +333,8 @@
     <div class="logo">
       <div class="logo-dot"></div>
       <div>
-        <h1>ShopBack <span>回饋率</span>追蹤</h1>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">自動追蹤旅遊平台現金回饋率變化</div>
+        <h1>旅遊 <span>智慧儀表板</span></h1>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">ShopBack 回饋率 × 航班票價追蹤</div>
       </div>
     </div>
     <div class="last-updated" id="last-updated">
@@ -252,6 +349,32 @@
       placeholder="https://raw.githubusercontent.com/你的帳號/shopback-tracker/main/data/cashback_history.json"
       value="">
     <button class="btn-load" onclick="loadData()">載入資料</button>
+  </div>
+
+  <!-- ── 航班票價區塊 ── -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-title">✈️ 航班票價追蹤</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="flight-config-bar">
+    <label>航班資料 JSON：</label>
+    <input type="text" id="flight-json-url"
+      placeholder="https://raw.githubusercontent.com/你的帳號/repo/main/data/flight_history.json"
+      value="">
+    <button class="btn-load" onclick="loadFlightData()">載入航班</button>
+  </div>
+
+  <div id="flight-content">
+    <div class="empty">請輸入航班 JSON 網址，點擊「載入航班」</div>
+  </div>
+
+  <!-- ── ShopBack 回饋率區塊 ── -->
+  <div class="section-divider">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-title">💰 ShopBack 回饋率追蹤</div>
+    <div class="section-divider-line"></div>
   </div>
 
   <div id="main-content">
@@ -512,6 +635,250 @@ function selectPlatform(p) {
   selectedPlatform = p;
   render();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════
+//  ✈️  航班票價區塊
+// ═══════════════════════════════════════════════
+
+const FLIGHT_COLORS = ['#4ecdc4', '#7c6fff', '#ffd93d', '#ff9a9e'];
+let flightData = null;
+let selectedRoute = null;
+let flightChartInstance = null;
+
+window.addEventListener('load', () => {
+  const savedFlight = localStorage.getItem('flight_json_url');
+  if (savedFlight) {
+    document.getElementById('flight-json-url').value = savedFlight;
+    loadFlightData();
+  }
+});
+
+async function loadFlightData() {
+  const url = document.getElementById('flight-json-url').value.trim();
+  if (!url) return;
+  localStorage.setItem('flight_json_url', url);
+
+  const content = document.getElementById('flight-content');
+  content.innerHTML = `<div class="loading"><span class="spinner"></span>載入航班資料中...</div>`;
+
+  try {
+    const res = await fetch(url + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    flightData = await res.json();
+
+    const routes = Object.keys(flightData);
+    if (!routes.length) {
+      content.innerHTML = `<div class="empty">航班 JSON 是空的</div>`;
+      return;
+    }
+    selectedRoute = routes[0];
+    renderFlight();
+  } catch (e) {
+    content.innerHTML = `<div class="error">無法載入航班資料：${e.message}</div>`;
+  }
+}
+
+function renderFlight() {
+  const routes = Object.keys(flightData);
+  const content = document.getElementById('flight-content');
+
+  // 計算每條航線統計
+  const stats = {};
+  routes.forEach((code, i) => {
+    const { label, records } = flightData[code];
+    const prices = records.map(r => r.price);
+    const latest = records[records.length - 1];
+    const prev = records.length >= 2 ? records[records.length - 2] : null;
+    stats[code] = {
+      label, records, prices, latest, prev,
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      avg: (prices.reduce((a,b) => a+b,0) / prices.length).toFixed(0),
+      color: FLIGHT_COLORS[i % FLIGHT_COLORS.length],
+    };
+  });
+
+  const s = stats[selectedRoute];
+
+  content.innerHTML = `
+    <!-- 航線卡片 -->
+    <div class="flight-grid" id="flight-grid"></div>
+
+    <!-- 選中航線統計 -->
+    <div class="stats-grid">
+      <div class="stat-card" style="--accent-color:${s.color}">
+        <div class="stat-label">目前最低票價</div>
+        <div class="stat-value">
+          <span style="font-size:1rem;font-weight:400;margin-right:2px">NT$</span>${s.latest?.price?.toLocaleString() ?? '—'}
+          ${s.latest?.price === s.min && s.prices.length > 1 ? '<span class="badge-low">🏷️ 歷史低</span>' : ''}
+          ${s.latest?.price === s.max && s.prices.length > 1 ? '<span class="badge-high-price">📈 歷史高</span>' : ''}
+        </div>
+        <div class="stat-sub">${s.prev ? (s.latest.price < s.prev.price
+          ? `▼ 比上次便宜 NT$${(s.prev.price - s.latest.price).toLocaleString()}`
+          : s.latest.price > s.prev.price
+            ? `▲ 比上次貴 NT$${(s.latest.price - s.prev.price).toLocaleString()}`
+            : '與上次相同') : '首次記錄'}</div>
+      </div>
+      <div class="stat-card" style="--accent-color:var(--success)">
+        <div class="stat-label">歷史最低</div>
+        <div class="stat-value"><span style="font-size:1rem;font-weight:400;margin-right:2px">NT$</span>${s.min.toLocaleString()}</div>
+        <div class="stat-sub">${(() => { const r = s.records.find(x => x.price === s.min); return r ? r.timestamp.slice(0,10) : '—'; })()}</div>
+      </div>
+      <div class="stat-card" style="--accent-color:var(--accent2)">
+        <div class="stat-label">歷史最高</div>
+        <div class="stat-value"><span style="font-size:1rem;font-weight:400;margin-right:2px">NT$</span>${s.max.toLocaleString()}</div>
+        <div class="stat-sub">${(() => { const r = s.records.find(x => x.price === s.max); return r ? r.timestamp.slice(0,10) : '—'; })()}</div>
+      </div>
+      <div class="stat-card" style="--accent-color:var(--accent4)">
+        <div class="stat-label">平均票價</div>
+        <div class="stat-value"><span style="font-size:1rem;font-weight:400;margin-right:2px">NT$</span>${Number(s.avg).toLocaleString()}</div>
+        <div class="stat-sub">共 ${s.prices.length} 筆記錄</div>
+      </div>
+    </div>
+
+    <!-- 航班趨勢圖 -->
+    <div class="chart-card">
+      <div class="chart-title">票價趨勢 — ${s.label}</div>
+      <div class="chart-wrap"><canvas id="flight-trend-chart"></canvas></div>
+    </div>
+
+    <!-- 各航線對比圖 -->
+    <div class="chart-card">
+      <div class="chart-title">各航線目前最低票價對比</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="flight-compare-chart"></canvas></div>
+    </div>
+
+    <!-- 歷史記錄表 -->
+    <div class="table-card">
+      <div class="table-header">
+        <h3>歷史記錄 — ${s.label}</h3>
+        <span style="font-size:11px;color:var(--muted)">${s.records.length} 筆</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>查詢時間</th><th>出發日期</th><th>最低票價</th><th>狀態</th></tr></thead>
+          <tbody>
+            ${[...s.records].reverse().map(r => `
+              <tr>
+                <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${r.timestamp}</td>
+                <td style="font-family:'DM Mono',monospace;font-size:12px">${r.date}</td>
+                <td class="rate-cell" style="color:${r.price === s.min ? 'var(--success)' : r.price === s.max ? 'var(--accent2)' : 'var(--text)'}">
+                  NT$${r.price.toLocaleString()}
+                </td>
+                <td>
+                  ${r.price === s.min && s.prices.length > 1 ? '<span class="badge-low">歷史低</span>' : ''}
+                  ${r.price === s.max && s.prices.length > 1 ? '<span class="badge-high-price">歷史高</span>' : ''}
+                  ${r.price !== s.min && r.price !== s.max ? '<span style="font-size:11px;color:var(--muted)">一般</span>' : ''}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // ── 航線卡片 ──
+  document.getElementById('flight-grid').innerHTML = routes.map((code, i) => {
+    const st = stats[code];
+    const prev = st.prev;
+    const trendHtml = prev
+      ? (st.latest.price < prev.price
+          ? `<span class="flight-trend-down">▼ NT$${(prev.price - st.latest.price).toLocaleString()} 便宜</span>`
+          : st.latest.price > prev.price
+            ? `<span class="flight-trend-up">▲ NT$${(st.latest.price - prev.price).toLocaleString()} 漲價</span>`
+            : '<span class="flight-trend-flat">持平</span>')
+      : '';
+    const [from, to] = st.label.split(' → ');
+    return `<div class="flight-card ${code === selectedRoute ? 'selected' : ''}"
+        style="--flight-color:${st.color}"
+        onclick="selectRoute('${code}')">
+      <div class="flight-route">
+        <span>${from}</span>
+        <span class="flight-route-arrow">✈</span>
+        <span>${to}</span>
+      </div>
+      <div class="flight-meta">${st.latest?.timestamp?.slice(0,10) || ''} ${trendHtml}</div>
+      <div class="flight-price-row">
+        <div class="flight-price">
+          <span class="currency">NT$</span>${st.latest?.price?.toLocaleString() ?? '—'}
+        </div>
+        <div class="flight-trend" style="font-size:11px;color:var(--muted)">
+          最低 NT$${st.min.toLocaleString()}<br>最高 NT$${st.max.toLocaleString()}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── 趨勢折線圖 ──
+  if (flightChartInstance) flightChartInstance.destroy();
+  const ctx = document.getElementById('flight-trend-chart').getContext('2d');
+  flightChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: s.records.map(r => r.timestamp.slice(0,10)),
+      datasets: [{
+        label: s.label,
+        data: s.records.map(r => r.price),
+        borderColor: s.color,
+        backgroundColor: s.color + '15',
+        pointBackgroundColor: s.records.map(r => r.price === s.min ? '#4ecdc4' : r.price === s.max ? '#ff6b6b' : s.color),
+        pointRadius: 5, pointHoverRadius: 7,
+        tension: 0.3, fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1c1c26', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#f0f0f8', bodyColor: '#9a9ab0',
+        callbacks: { label: ctx => ` NT$${ctx.parsed.y.toLocaleString()}` }
+      }},
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#6b6b80', font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b6b80', font: { size: 11 }, callback: v => 'NT$' + v.toLocaleString() }
+        }
+      }
+    }
+  });
+
+  // ── 對比長條圖 ──
+  const ctx2 = document.getElementById('flight-compare-chart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: routes.map(c => flightData[c].label),
+      datasets: [{
+        data: routes.map(c => stats[c].latest?.price ?? 0),
+        backgroundColor: routes.map((c,i) => FLIGHT_COLORS[i % FLIGHT_COLORS.length] + 'cc'),
+        borderColor: routes.map((c,i) => FLIGHT_COLORS[i % FLIGHT_COLORS.length]),
+        borderWidth: 1, borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#1c1c26', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+        titleColor: '#f0f0f8', bodyColor: '#9a9ab0',
+        callbacks: { label: ctx => ` NT$${ctx.parsed.y.toLocaleString()}` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#6b6b80', font: { size: 11 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#6b6b80', font: { size: 11 }, callback: v => 'NT$' + v.toLocaleString() }
+        }
+      }
+    }
+  });
+}
+
+function selectRoute(code) {
+  selectedRoute = code;
+  renderFlight();
+  document.getElementById('flight-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 </script>
 </body>

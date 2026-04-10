@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>回饋率追蹤儀表板</title>
+<title>旅遊智慧儀表板</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -228,18 +228,43 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Section divider ── */
-  .section-divider {
-    display: flex; align-items: center; gap: 12px;
-    margin: 2rem 0 1.5rem;
+  /* ── Page Tabs ── */
+  .page-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 5px;
+    margin-bottom: 2rem;
+    width: fit-content;
   }
-  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
-  .section-divider-title {
-    font-size: 11px; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 0.08em;
+  .page-tab {
+    padding: 8px 22px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: 'Sora', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 7px;
     white-space: nowrap;
-    display: flex; align-items: center; gap: 6px;
   }
+  .page-tab:hover { color: var(--text); }
+  .page-tab.active {
+    background: var(--surface2);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .page-tab.active.tab-shopback { color: var(--accent); }
+  .page-tab.active.tab-flight { color: #4ecdc4; }
+
+  .page-panel { display: none; }
+  .page-panel.active { display: block; }
 
   /* ── Flight config bar ── */
   .flight-config-bar {
@@ -351,39 +376,65 @@
     <button class="btn-load" onclick="loadData()">載入資料</button>
   </div>
 
-  <!-- ── 航班票價區塊 ── -->
-  <div class="section-divider">
-    <div class="section-divider-line"></div>
-    <div class="section-divider-title">✈️ 航班票價追蹤</div>
-    <div class="section-divider-line"></div>
+  <!-- Tab 切換 -->
+  <div class="page-tabs">
+    <button class="page-tab tab-shopback active" onclick="switchTab('shopback')">
+      💰 ShopBack 回饋率
+    </button>
+    <button class="page-tab tab-flight" onclick="switchTab('flight')">
+      ✈️ 航班票價
+    </button>
   </div>
 
-  <div class="flight-config-bar">
-    <label>航班資料 JSON：</label>
-    <input type="text" id="flight-json-url"
-      placeholder="https://raw.githubusercontent.com/你的帳號/repo/main/data/flight_history.json"
-      value="">
-    <button class="btn-load" onclick="loadFlightData()">載入航班</button>
+  <!-- ── ShopBack 分頁 ── -->
+  <div class="page-panel active" id="panel-shopback">
+
+    <!-- JSON 來源設定 -->
+    <div class="config-bar">
+      <label>資料來源 JSON：</label>
+      <input type="text" id="json-url"
+        placeholder="https://raw.githubusercontent.com/你的帳號/shopback-tracker/main/data/cashback_history.json"
+        value="">
+      <button class="btn-load" onclick="loadData()">載入資料</button>
+    </div>
+
+    <div id="main-content">
+      <div class="empty">請輸入你的 GitHub raw JSON 網址，點擊「載入資料」開始使用</div>
+    </div>
+
   </div>
 
-  <div id="flight-content">
-    <div class="empty">請輸入航班 JSON 網址，點擊「載入航班」</div>
-  </div>
+  <!-- ── 航班分頁 ── -->
+  <div class="page-panel" id="panel-flight">
 
-  <!-- ── ShopBack 回饋率區塊 ── -->
-  <div class="section-divider">
-    <div class="section-divider-line"></div>
-    <div class="section-divider-title">💰 ShopBack 回饋率追蹤</div>
-    <div class="section-divider-line"></div>
-  </div>
+    <div class="flight-config-bar">
+      <label>航班資料 JSON：</label>
+      <input type="text" id="flight-json-url"
+        placeholder="https://raw.githubusercontent.com/你的帳號/repo/main/data/flight_history.json"
+        value="">
+      <button class="btn-load" onclick="loadFlightData()">載入航班</button>
+    </div>
 
-  <div id="main-content">
-    <div class="empty">請輸入你的 GitHub raw JSON 網址，點擊「載入資料」開始使用</div>
+    <div id="flight-content">
+      <div class="empty">請輸入航班 JSON 網址，點擊「載入航班」</div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
+let currentTab = 'shopback';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page-panel').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.tab-${tab}`).classList.add('active');
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 const PLATFORM_COLORS = {
   'Hotels.com':  '#7c6fff',
   'Booking.com': '#4ecdc4',

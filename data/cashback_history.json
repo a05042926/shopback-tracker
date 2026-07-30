@@ -5326,5 +5326,53 @@
     "url": "https://www.shopback.com.tw/klook",
     "date": "2026-07-29",
     "scraped_at": "2026-07-29 18:00:49"
+  },
+  {
+    "platform": "Hotels.com",
+    "rate": 5.5,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/hotels-com",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
+  },
+  {
+    "platform": "Booking.com",
+    "rate": 9.0,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/booking-com",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
+  },
+  {
+    "platform": "KKday",
+    "rate": 20.0,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/kkday",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
+  },
+  {
+    "platform": "Trip.com",
+    "rate": 1.0,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/trip-com",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
+  },
+  {
+    "platform": "Agoda",
+    "rate": 4.5,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/agoda",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
+  },
+  {
+    "platform": "Klook",
+    "rate": 20.0,
+    "is_upsized": true,
+    "url": "https://www.shopback.com.tw/klook",
+    "date": "2026-07-30",
+    "scraped_at": "2026-07-30 18:09:06"
   }
 ]
